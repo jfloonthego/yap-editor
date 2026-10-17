@@ -113,6 +113,70 @@ def say(job_id: str, msg: str) -> None:
         pass
 
 
+
+# ---- the brand's own look ------------------------------------------------------------------------------------------
+def _rgb(h: str) -> tuple:
+    h = (h or "").lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    try:
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+    except Exception:
+        return (53, 49, 107)
+
+
+def _hex(c: tuple) -> str:
+    return "#%02x%02x%02x" % tuple(max(0, min(255, int(v))) for v in c)
+
+
+def _mix(a: str, b: str, t: float) -> str:
+    x, y = _rgb(a), _rgb(b)
+    return _hex(tuple(x[i] * (1 - t) + y[i] * t for i in range(3)))
+
+
+def _lum(h: str) -> float:
+    r, g, b = [v / 255 for v in _rgb(h)]
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def brand_override(style: dict | None, jid: str) -> dict | None:
+    """Turns the dashboard's brand style (name, logo, colors, tagline, website) into the renderer's brand settings."""
+    if not style:
+        return None
+    c = style.get("colors") or {}
+    primary = c.get("primary") or "#35316b"
+    accent = c.get("accent") or _mix(primary, "#ffffff", 0.45)
+    cta = accent if _lum(accent) > 0.25 else _mix(accent, "#ffffff", 0.35)
+    logo = None
+    if style.get("logo_url"):
+        try:
+            dest = ROOT / "render/public/brand" / f"job-{jid[:8]}.png"
+            download(style["logo_url"], dest)
+            logo = f"brand/{dest.name}"
+        except Exception:
+            logo = None
+    url = (style.get("website") or "").replace("https://", "").replace("http://", "").strip("/")
+    return {"name": style.get("name") or "", "logo": logo, "textColor": "#ffffff", "bgTop": _mix(primary, "#000000", 0.55), "bgBottom": primary,
+            "accentFrom": primary if _lum(primary) > 0.12 else _mix(primary, "#ffffff", 0.4), "accentMid": accent, "accentTo": _mix(accent, "#ffffff", 0.5),
+            "cta": cta, "ctaText": "#111111" if _lum(cta) > 0.5 else "#ffffff", "tagline": style.get("tagline") or "", "url": url}
+
+
+def source_dims(video: Path) -> tuple:
+    """The width and height the video is SHOWN at (a phone video is stored sideways and flagged as rotated)."""
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height:stream_side_data=rotation:stream_tags=rotate", "-of", "json", str(video)], capture_output=True, text=True)
+    try:
+        st = json.loads(r.stdout)["streams"][0]
+        w, h = int(st["width"]), int(st["height"])
+        rot = 0
+        for sd in st.get("side_data_list", []) or []:
+            if "rotation" in sd:
+                rot = int(float(sd["rotation"]))
+        rot = rot or int(st.get("tags", {}).get("rotate", 0) or 0)
+        return (h, w) if abs(rot) % 180 == 90 else (w, h)
+    except Exception:
+        return (1920, 1080)
+
+
 # ---- a social reel -------------------------------------------------------------------------------------------------
 def audio_for(video: Path, dest: Path) -> bytes:
     for bitrate, rate in (("32k", "16000"), ("24k", "16000"), ("16k", "12000")):
@@ -181,11 +245,20 @@ def do_reel(job: dict, work: Path) -> Path:
         cuts["takes"][tid] = {"path": str(path), "words": str(wpath)}
     cuts["segments"] = [{k: v for k, v in s.items() if v is not None} for s in plan["segments"]]
     (work / "cuts.json").write_text(json.dumps(cuts, indent=2))
-    say(jid, "Cutting the video")
-    run([sys.executable, "pipeline/assemble.py", str(work / "cuts.json")])
+    # A phone (vertical) video fills the whole frame; a wide video sits in a band between the headline and the brand.
+    w, h = source_dims(next(iter(takes.values())))
+    portrait = h >= w
+    say(jid, "Cutting the video" + (" (vertical, full screen)" if portrait else ""))
+    run([sys.executable, "pipeline/assemble.py", str(work / "cuts.json"), "--width", "1080" if portrait else "1920"])
+    props_path = ROOT / "render/public/reels" / slug / "props.json"
+    brand = brand_override(job.get("style"), jid)
+    if brand:
+        props = json.loads(props_path.read_text())
+        props["brand"] = brand
+        props_path.write_text(json.dumps(props))
     say(jid, "Rendering the branded video (a few minutes)")
     out = ROOT / "out" / f"{slug}.mp4"
-    render("LandscapeOnBlack", f"public/reels/{slug}/props.json", out)
+    render("PortraitReel" if portrait else "LandscapeOnBlack", f"public/reels/{slug}/props.json", out)
     return out
 
 
@@ -215,7 +288,11 @@ def do_deal(job: dict, work: Path) -> Path:
     props = {"clip": f"deals/{slug}/clip.mp4", "headline": d.get("headline") or "New deal", "location": d.get("location"), "facts": facts_line(d), "price": money(d.get("price")), "spread": money(d.get("spread")),
              "rent": (money(d.get("rent")) + "/mo") if d.get("rent") else None, "offerBy": offer_by, "url": (d.get("url") or "").replace("https://", "").replace("http://", "") or "jesemmhomeventures.com",
              "clipDurationInSeconds": round(probe(stage / "clip.mp4"), 3), "introSeconds": 4, "outroSeconds": 5}
-    (stage / "props.json").write_text(json.dumps({k: v for k, v in props.items() if v not in (None, "")}, indent=2))
+    clean = {k: v for k, v in props.items() if v not in (None, "")}
+    brand = brand_override(job.get("style"), jid)
+    if brand:
+        clean["brand"] = brand
+    (stage / "props.json").write_text(json.dumps(clean, indent=2))
     say(jid, "Rendering the branded video (a few minutes)")
     out = ROOT / "out" / f"{slug}.mp4"
     render("DealWalkthrough", f"public/deals/{slug}/props.json", out)
@@ -240,6 +317,8 @@ def process(job: dict) -> None:
             pass
     finally:
         shutil.rmtree(work, ignore_errors=True)
+        for f in (ROOT / "render/public/brand").glob(f"job-{jid[:8]}.png"):
+            f.unlink(missing_ok=True)
 
 
 def heartbeat(stop: threading.Event) -> None:

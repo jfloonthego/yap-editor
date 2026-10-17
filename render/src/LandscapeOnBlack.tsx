@@ -53,9 +53,13 @@ export const LandscapeOnBlack: React.FC<LandscapeProps> = ({
   return (
     <AbsoluteFill style={{background: `linear-gradient(180deg, ${brand.bgTop} 0%, ${brand.bgBottom} 100%)`, fontFamily: bodyFont}}>
       <div style={{position: "absolute", top: 96, left: 0, right: 0, display: "flex", justifyContent: "center"}}>
-        <div style={{background: "#ffffff", borderRadius: 32, padding: "20px 34px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)"}}>
-          <Img src={staticFile(brand.logo)} style={{height: 170, width: "auto", display: "block"}} />
-        </div>
+        {brand.logo ? (
+          <div style={{background: "#ffffff", borderRadius: 32, padding: "20px 34px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)"}}>
+            <Img src={staticFile(brand.logo)} style={{height: 170, width: "auto", display: "block"}} />
+          </div>
+        ) : (
+          <div style={{fontFamily: headlineFont, fontWeight: 800, fontSize: 70, color: brand.textColor, letterSpacing: -1}}>{brand.name}</div>
+        )}
       </div>
       {[VID_TOP - 10, VID_TOP + VID_H].map((y) => (
         <div key={y} style={{position: "absolute", left: 0, width: W, top: y, height: 10, background: `linear-gradient(90deg, ${brand.accentFrom}, ${brand.accentMid}, ${brand.accentTo})`}} />
@@ -127,8 +131,8 @@ export const LandscapeOnBlack: React.FC<LandscapeProps> = ({
         {headline}
       </div>
       <div style={{position: "absolute", left: 0, right: 0, top: VID_TOP + VID_H + 90, display: "flex", flexDirection: "column", alignItems: "center", gap: 18}}>
-        <div style={{background: brand.cta, color: brand.ctaText, fontFamily: bodyFont, fontWeight: 700, fontSize: 46, padding: "20px 48px", borderRadius: 999}}>{brand.tagline}</div>
-        {brand.url ? <div style={{color: "#ffffff", opacity: 0.85, fontFamily: bodyFont, fontWeight: 700, fontSize: 36, letterSpacing: 1}}>{brand.url}</div> : null}
+        {brand.tagline ? <div style={{background: brand.cta, color: brand.ctaText, fontFamily: bodyFont, fontWeight: 700, fontSize: 46, padding: "20px 48px", borderRadius: 999}}>{brand.tagline}</div> : null}
+        {brand.url ? <div style={{color: brand.textColor, opacity: 0.85, fontFamily: bodyFont, fontWeight: 700, fontSize: 36, letterSpacing: 1}}>{brand.url}</div> : null}
       </div>
     </AbsoluteFill>
   );

@@ -3,6 +3,7 @@ import {Composition} from "remotion";
 
 import {LandscapeOnBlack} from "./LandscapeOnBlack";
 import {DealWalkthrough} from "./DealWalkthrough";
+import {PortraitReel} from "./PortraitReel";
 import {DealProps, LandscapeProps} from "./types";
 
 const defaultProps: LandscapeProps = {
@@ -30,6 +31,19 @@ export const Root: React.FC = () => {
       calculateMetadata={({props}) => {
         const fps = props.fps ?? 30;
         return {fps, durationInFrames: Math.max(1, Math.round(((props.introSeconds ?? 4) + props.clipDurationInSeconds + (props.outroSeconds ?? 5)) * fps))};
+      }}
+    />
+    <Composition<any, LandscapeProps>
+      id="PortraitReel"
+      component={PortraitReel}
+      width={1080}
+      height={1920}
+      fps={30}
+      durationInFrames={Math.round((defaultProps.durationInSeconds ?? 10) * 30)}
+      defaultProps={defaultProps}
+      calculateMetadata={({props}) => {
+        const fps = props.fps ?? 30;
+        return {fps, durationInFrames: Math.max(1, Math.round((props.durationInSeconds ?? 10) * fps))};
       }}
     />
     <Composition<any, LandscapeProps>

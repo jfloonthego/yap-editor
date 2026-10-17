@@ -35,9 +35,13 @@ export const DealWalkthrough: React.FC<DealProps> = (props) => {
   const introF = Math.round(introSeconds * fps), outroF = Math.round(outroSeconds * fps), clipF = Math.round(clipDurationInSeconds * fps);
 
   const logo = (
-    <div style={{background: "#fff", borderRadius: 28, padding: "18px 30px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)"}}>
-      <Img src={staticFile(brand.logo)} style={{height: 150, width: "auto", display: "block"}} />
-    </div>
+    brand.logo ? (
+      <div style={{background: "#fff", borderRadius: 28, padding: "18px 30px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)"}}>
+        <Img src={staticFile(brand.logo)} style={{height: 150, width: "auto", display: "block"}} />
+      </div>
+    ) : (
+      <div style={{fontFamily: headlineFont, fontWeight: 800, fontSize: 84, color: "#fff"}}>{brand.name}</div>
+    )
   );
 
   return (
@@ -61,9 +65,11 @@ export const DealWalkthrough: React.FC<DealProps> = (props) => {
       <Sequence from={introF} durationInFrames={clipF}>
         <AbsoluteFill>
           <OffthreadVideo src={staticFile(clip)} style={{width: DEAL_W, height: DEAL_H, objectFit: "cover"}} />
-          <div style={{position: "absolute", top: 36, right: 36, background: "#fff", borderRadius: 16, padding: "8px 16px", opacity: 0.92}}>
-            <Img src={staticFile(brand.logo)} style={{height: 64, width: "auto", display: "block"}} />
-          </div>
+          {brand.logo ? (
+            <div style={{position: "absolute", top: 36, right: 36, background: "#fff", borderRadius: 16, padding: "8px 16px", opacity: 0.92}}>
+              <Img src={staticFile(brand.logo)} style={{height: 64, width: "auto", display: "block"}} />
+            </div>
+          ) : null}
         </AbsoluteFill>
       </Sequence>
 
@@ -74,7 +80,7 @@ export const DealWalkthrough: React.FC<DealProps> = (props) => {
             <div style={{fontFamily: headlineFont, fontWeight: 800, fontSize: 104, color: "#fff", lineHeight: 1.08}}>Make your offer</div>
             {offerBy ? <div style={{fontSize: 56, fontWeight: 700, color: brand.accentTo}}>Offers due {offerBy}</div> : null}
             <div style={{background: brand.cta, color: brand.ctaText, fontWeight: 700, fontSize: 60, padding: "26px 70px", borderRadius: 999}}>{url}</div>
-            <div style={{fontSize: 40, color: "#fff", opacity: 0.85}}>{brand.tagline}</div>
+            {brand.tagline ? <div style={{fontSize: 40, color: "#fff", opacity: 0.85}}>{brand.tagline}</div> : null}
           </div>
         </Ground>
       </Sequence>
