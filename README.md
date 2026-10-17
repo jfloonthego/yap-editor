@@ -117,6 +117,23 @@ python3 pipeline/verify.py build/take-a/cut.mp4
 
 The editing method is documented in `agent/AGENT.md` and the linked knowledge files. `pipeline/CUTS-SCHEMA.md` is the contract between editorial judgement and deterministic assembly.
 
+## Jesemm fork: branding and Social Studio
+
+This fork is branded for Jesemm Home Ventures and sends finished reels to the dashboard's Social Studio.
+
+**Branding.** `render/src/brand.ts` holds the palette, tagline and URL; `render/public/brand/logo.png` is the logo (shown on a white card at the top); the fonts are Archivo and Source Sans 3 (the same as jesemmhomeventures.com), inlined by `python3 scripts/inline_brand_fonts.py`. The layout is a gradient indigo ground, the logo card, the headline, the video band between a blue-teal-sun line, and a call-to-action pill. A reel can override any brand field with a `"brand": {...}` object in its `props.json` (for example to render a reel for another brand).
+
+**Send to Social Studio.** Put the three lines from Social Studio -> Setup -> Connections -> "Reel editor (Yap)" in `.env` (see `.env.example`), then:
+
+```bash
+python3 review/publish_social.py out/take-a-reel.mp4 --headline "the line on screen" \
+  --caption "The post text" --hashtags "realestate,sellinghouses" --platforms facebook,instagram
+```
+
+The video is uploaded straight to storage and added to the brand's library, and one draft per channel appears in Social Studio -> Review & approve. Nothing is posted until a person approves and schedules it there (the brand's banned-phrase and Fair Housing rules are checked on the caption). This replaces the S3/R2 phone review page for our use; `review/` is left in place.
+
+**Rendering tip.** If Remotion's own browser download stalls, render with the Chrome you already have: add `--browser-executable="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
+
 ## Optional extras
 
 `plan.py`, `assemble.py`, `verify.py`, and every script in `review/` run on Python's standard library plus `ffmpeg` and `ffprobe`. Nothing else is required to make a reel.

@@ -1,4 +1,4 @@
-.PHONY: sample transcribe plan cut render verify review quickstart clean
+.PHONY: sample transcribe plan cut render verify review social quickstart clean
 
 sample:
 	@echo "python3 sample/make_sample.py"
@@ -30,6 +30,11 @@ verify:
 review:
 	@echo "python3 review/build.py --add out/sample-reel.mp4"
 	@python3 review/build.py --add out/sample-reel.mp4
+
+# Send the sample reel to Social Studio as drafts (needs SOCIAL_STUDIO_URL / SOCIAL_STUDIO_TOKEN / SOCIAL_BRAND in .env).
+social:
+	@echo "python3 review/publish_social.py out/sample-reel.mp4 --headline ... --caption ..."
+	@python3 review/publish_social.py out/sample-reel.mp4 --headline "$(HEADLINE)" --caption "$(CAPTION)"
 
 quickstart: cut render
 

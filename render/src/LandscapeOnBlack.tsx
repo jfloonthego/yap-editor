@@ -1,10 +1,12 @@
 // Geometry measured from the reference reel's frames: 31.7% band, persistent
-// headline, and lowercase lower-third captions.
+// headline, and lowercase lower-third captions. Branded: logo card on top, gradient ground,
+// three-color line around the band, and a call-to-action pill underneath (see ./brand.ts).
 
 import React from "react";
 import {
   AbsoluteFill,
   Audio,
+  Img,
   OffthreadVideo,
   interpolate,
   staticFile,
@@ -12,7 +14,8 @@ import {
   useVideoConfig,
 } from "remotion";
 
-import {fontFamily} from "./fonts";
+import {BRAND} from "./brand";
+import {bodyFont, headlineFont} from "./fonts";
 import {LandscapeProps} from "./types";
 
 export const W = 1080;
@@ -27,7 +30,9 @@ export const LandscapeOnBlack: React.FC<LandscapeProps> = ({
   audio,
   headline,
   captions,
+  brand: brandOverride,
 }) => {
+  const brand = {...BRAND, ...(brandOverride ?? {})};
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const time = frame / fps;
@@ -46,7 +51,15 @@ export const LandscapeOnBlack: React.FC<LandscapeProps> = ({
   // not exist in the window and interpolate throws, so opacity stays at 1.
 
   return (
-    <AbsoluteFill style={{backgroundColor: "#000000", fontFamily}}>
+    <AbsoluteFill style={{background: `linear-gradient(180deg, ${brand.bgTop} 0%, ${brand.bgBottom} 100%)`, fontFamily: bodyFont}}>
+      <div style={{position: "absolute", top: 96, left: 0, right: 0, display: "flex", justifyContent: "center"}}>
+        <div style={{background: "#ffffff", borderRadius: 32, padding: "20px 34px", boxShadow: "0 12px 40px rgba(0,0,0,0.35)"}}>
+          <Img src={staticFile(brand.logo)} style={{height: 170, width: "auto", display: "block"}} />
+        </div>
+      </div>
+      {[VID_TOP - 10, VID_TOP + VID_H].map((y) => (
+        <div key={y} style={{position: "absolute", left: 0, width: W, top: y, height: 10, background: `linear-gradient(90deg, ${brand.accentFrom}, ${brand.accentMid}, ${brand.accentTo})`}} />
+      ))}
       <div
         style={{
           position: "absolute",
@@ -81,7 +94,8 @@ export const LandscapeOnBlack: React.FC<LandscapeProps> = ({
             <span
               style={{
                 opacity: captionOpacity,
-                fontSize: 58,
+                fontFamily: bodyFont,
+                fontSize: 60,
                 fontWeight: 700,
                 color: "#ffffff",
                 lineHeight: 1.14,
@@ -102,14 +116,19 @@ export const LandscapeOnBlack: React.FC<LandscapeProps> = ({
           right: 60,
           bottom: H - VID_TOP + 26,
           textAlign: "center",
-          fontSize: 62,
-          fontWeight: 700,
+          fontFamily: headlineFont,
+          fontSize: 64,
+          fontWeight: 800,
           color: "#ffffff",
-          lineHeight: 1.16,
+          lineHeight: 1.12,
           letterSpacing: -1,
         }}
       >
         {headline}
+      </div>
+      <div style={{position: "absolute", left: 0, right: 0, top: VID_TOP + VID_H + 90, display: "flex", flexDirection: "column", alignItems: "center", gap: 18}}>
+        <div style={{background: brand.cta, color: brand.ctaText, fontFamily: bodyFont, fontWeight: 700, fontSize: 46, padding: "20px 48px", borderRadius: 999}}>{brand.tagline}</div>
+        {brand.url ? <div style={{color: "#ffffff", opacity: 0.85, fontFamily: bodyFont, fontWeight: 700, fontSize: 36, letterSpacing: 1}}>{brand.url}</div> : null}
       </div>
     </AbsoluteFill>
   );

@@ -4,6 +4,8 @@ export type Caption = {
   text: string;
 };
 
+import type {Brand} from "./brand";
+
 export type LandscapeProps = {
   clip: string;
   audio?: string;
@@ -11,4 +13,5 @@ export type LandscapeProps = {
   captions: Caption[];
   durationInSeconds?: number;
   fps?: number;
+  brand?: Partial<Brand>;
 };
