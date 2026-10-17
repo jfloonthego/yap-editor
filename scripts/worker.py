@@ -290,13 +290,20 @@ def install() -> int:
     if platform.system() != "Darwin":
         print("Connected. On this computer start it with:  python3 scripts/worker.py  (or use the Dockerfile for a server).")
         return 0
+    # macOS does not let background programs read ~/Documents, ~/Desktop or ~/Downloads, so the worker runs from a copy in your home folder
+    # (run --install again after updating this repo to refresh the copy).
+    run_root = ROOT
+    if any(str(ROOT).startswith(str(Path.home() / d)) for d in ("Documents", "Desktop", "Downloads")):
+        run_root = Path.home() / "yap-worker"
+        print(f"Copying the editor to {run_root} (macOS keeps background programs out of Documents)…")
+        subprocess.run(["rsync", "-a", "--delete", "--exclude", ".git", "--exclude", "work", "--exclude", "out", "--exclude", ".npm-cache", f"{ROOT}/", f"{run_root}/"], check=True)
     log_file = Path.home() / "Library/Logs/yap-worker.log"
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>{LABEL}</string>
-  <key>ProgramArguments</key><array><string>{sys.executable}</string><string>{ROOT / 'scripts/worker.py'}</string></array>
-  <key>WorkingDirectory</key><string>{ROOT}</string>
+  <key>ProgramArguments</key><array><string>{sys.executable}</string><string>{run_root / 'scripts/worker.py'}</string></array>
+  <key>WorkingDirectory</key><string>{run_root}</string>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
   <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>{log_file}</string><key>StandardErrorPath</key><string>{log_file}</string>
