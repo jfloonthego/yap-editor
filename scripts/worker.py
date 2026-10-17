@@ -129,20 +129,29 @@ def venv_python() -> str:
 
 
 def transcribe_take(jid: str, tid: str, video: Path, work: Path) -> list:
-    """The dashboard transcribes with OpenAI Whisper; if that fails (for example the account has no credits) a locally installed Whisper is used."""
+    """Whisper on this computer first (free, nothing leaves it); if that is not installed or fails, the dashboard transcribes with OpenAI Whisper."""
+    py = venv_python()
+    local_error = ""
+    if subprocess.run([py, "-c", "import mlx_whisper"], capture_output=True).returncode == 0 or subprocess.run([py, "-c", "import faster_whisper"], capture_output=True).returncode == 0:
+        has_mlx = subprocess.run([py, "-c", "import mlx_whisper"], capture_output=True).returncode == 0
+        model_args = ["--backend", "mlx", "--model", "mlx-community/whisper-small-mlx"] if has_mlx else ["--backend", "faster", "--model", "small"]
+        out = work / f"take-{tid}.local.json"
+        r = subprocess.run([py, "pipeline/transcribe.py", str(video), "-o", str(out), *model_args], cwd=ROOT, capture_output=True, text=True)
+        if r.returncode == 0 and out.exists():
+            words = json.loads(out.read_text())["words"]
+            if words:
+                return words
+            local_error = "The local Whisper heard no speech."
+        else:
+            local_error = (r.stderr or r.stdout).strip()[-200:]
+    else:
+        local_error = "Whisper is not installed on this computer."
+    say(jid, "Trying online transcription (OpenAI)")
     try:
         data = audio_for(video, work / f"take-{tid}.mp3")
         return call(f"/jobs/transcribe?job={jid}&take={tid}", data=data, ctype="audio/mpeg")["words"]
-    except Exception as first:  # noqa: BLE001
-        say(jid, "Online transcription unavailable, trying the Whisper installed on this computer")
-        out = work / f"take-{tid}.local.json"
-        py = venv_python()
-        has_mlx = subprocess.run([py, "-c", "import mlx_whisper"], capture_output=True).returncode == 0
-        model_args = ["--backend", "mlx", "--model", "mlx-community/whisper-small-mlx"] if has_mlx else ["--backend", "faster", "--model", "small"]
-        r = subprocess.run([py, "pipeline/transcribe.py", str(video), "-o", str(out), *model_args], cwd=ROOT, capture_output=True, text=True)
-        if r.returncode == 0 and out.exists():
-            return json.loads(out.read_text())["words"]
-        raise RuntimeError(f"{first} Local transcription isn't installed either. Fix: add credits to the OpenAI account (a few minutes of speech costs a cent or two), or run: python3 scripts/worker.py --install-transcription")
+    except Exception as online:  # noqa: BLE001
+        raise RuntimeError(f"Could not transcribe. On this computer: {local_error} Online: {online}")
 
 
 def do_reel(job: dict, work: Path) -> Path:
