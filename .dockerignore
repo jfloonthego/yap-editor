@@ -1,0 +1,8 @@
+.git
+.env
+out
+work
+build
+media
+render/node_modules
+.npm-cache

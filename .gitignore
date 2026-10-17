@@ -37,3 +37,4 @@ review/decisions.json
 
 # os
 .DS_Store
+.npm-cache/

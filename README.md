@@ -141,6 +141,16 @@ python3 scripts/deal_video.py raw-walkthrough.mp4 --deal <deal-id> --trim 4.5-96
 
 Facts come from the deal (a hidden address is never put in the intro). Add `--no-publish` to only render, or pass `--headline/--price/--spread/--url` by hand. An AI-generated intro clip (for example from Higgsfield) can be dropped in as the footage's first seconds before running this.
 
+**The reel editor (no commands after setup).** In the dashboard, Social Studio -> Create -> **Reel editor**: add raw videos, optionally write instructions, and press Edit my video. This repo's **worker** does the editing in the background: it downloads the videos, has the dashboard transcribe them (OpenAI Whisper), asks the AI editor for the cut (hook first, tangents and flubs out, following `agent/`), cuts and renders the branded reel, uploads it, and the dashboard puts drafts in Review & approve. Tell it what to change ("start with the second story") and it re-edits without re-listening. Dispo walkthroughs work the same way and attach to the deal.
+
+One-time setup on the computer that will do the editing:
+
+```bash
+python3 scripts/worker.py --install     # checks ffmpeg and Node, installs the renderer, starts the worker, and starts it at every login
+```
+
+The dashboard shows a green "online" light when it is running. Remove it with `--uninstall`. To run it on a server instead (so your own computer can be off), use the `Dockerfile`: it needs only SOCIAL_STUDIO_URL and SOCIAL_STUDIO_TOKEN. Cloudflare Containers can host it (4 vCPU / 12 GiB at most, so renders are slower than on a Mac); Fly.io, Railway or Render work too.
+
 **Rendering tip.** If Remotion's own browser download stalls, render with the Chrome you already have: add `--browser-executable="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
 
 ## Optional extras
