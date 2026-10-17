@@ -123,6 +123,25 @@ def audio_for(video: Path, dest: Path) -> bytes:
     raise RuntimeError("That video is too long to transcribe (about 20 minutes is the most). Trim it and add it again.")
 
 
+def venv_python() -> str:
+    v = ROOT / ".venv/bin/python"
+    return str(v) if v.exists() else sys.executable
+
+
+def transcribe_take(jid: str, tid: str, video: Path, work: Path) -> list:
+    """The dashboard transcribes with OpenAI Whisper; if that fails (for example the account has no credits) a locally installed Whisper is used."""
+    try:
+        data = audio_for(video, work / f"take-{tid}.mp3")
+        return call(f"/jobs/transcribe?job={jid}&take={tid}", data=data, ctype="audio/mpeg")["words"]
+    except Exception as first:  # noqa: BLE001
+        say(jid, "Online transcription unavailable, trying the Whisper installed on this computer")
+        out = work / f"take-{tid}.local.json"
+        r = subprocess.run([venv_python(), "pipeline/transcribe.py", str(video), "-o", str(out)], cwd=ROOT, capture_output=True, text=True)
+        if r.returncode == 0 and out.exists():
+            return json.loads(out.read_text())["words"]
+        raise RuntimeError(f"{first} Local transcription isn't installed either. Fix: add credits to the OpenAI account (a few minutes of speech costs a cent or two), or run: python3 scripts/worker.py --install-transcription")
+
+
 def do_reel(job: dict, work: Path) -> Path:
     jid = job["id"]
     takes = {}
@@ -137,8 +156,7 @@ def do_reel(job: dict, work: Path) -> Path:
         takes[t["id"]] = dest
         if not words.get(t["id"]):
             say(jid, f"Listening to {t['name']} (transcribing)")
-            data = audio_for(dest, work / f"take-{t['id']}.mp3")
-            words[t["id"]] = call(f"/jobs/transcribe?job={jid}&take={t['id']}", data=data, ctype="audio/mpeg")["words"]
+            words[t["id"]] = transcribe_take(jid, t["id"], dest, work)
     say(jid, "The AI editor is deciding the cut")
     plan = call("/jobs", {"action": "plan", "job_id": jid, "words": words})["plan"]
     headline = (job.get("headline") or plan.get("headline") or "").strip()
@@ -220,7 +238,7 @@ def heartbeat(stop: threading.Event) -> None:
             pass
 
 
-def loop() -> int:
+def loop(once: bool = False) -> int:
     for need in ("ffmpeg", "ffprobe", "npm"):
         if shutil.which(need) is None:
             print(f"Missing {need}. Install it first (on a Mac: brew install ffmpeg node).", file=sys.stderr)
@@ -237,7 +255,12 @@ def loop() -> int:
             if got.get("job"):
                 log(f"Picked up job {got['job']['id'][:8]} ({got['job']['mode']})")
                 process(got["job"])
+                if once:
+                    return 0
                 continue
+            if once:
+                log("No jobs waiting.")
+                return 0
         except Exception as e:  # noqa: BLE001
             log(f"Could not reach the dashboard: {e}")
         time.sleep(POLL)
@@ -290,6 +313,19 @@ def install() -> int:
     return 0
 
 
+def install_transcription() -> int:
+    """Optional: Whisper on this computer, used when online transcription is unavailable (no OpenAI credits)."""
+    venv = ROOT / ".venv"
+    if not venv.exists():
+        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
+    pip = str(venv / "bin/pip")
+    pkg = "mlx-whisper" if platform.system() == "Darwin" and platform.machine() == "arm64" else "faster-whisper"
+    print(f"Installing {pkg} (a few minutes; the speech model downloads the first time it is used)…")
+    r = subprocess.run([pip, "install", pkg])
+    print("Done." if r.returncode == 0 else "That did not work; see the messages above.")
+    return r.returncode
+
+
 def uninstall() -> int:
     subprocess.run(["launchctl", "unload", "-w", str(plist_path())], capture_output=True)
     plist_path().unlink(missing_ok=True)
@@ -299,6 +335,6 @@ def uninstall() -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--install", action="store_true"); ap.add_argument("--uninstall", action="store_true")
+    ap.add_argument("--once", action="store_true", help="handle one waiting job, then exit (for testing)"); ap.add_argument("--install-transcription", action="store_true", help="install Whisper on this computer as a fallback"); ap.add_argument("--install", action="store_true"); ap.add_argument("--uninstall", action="store_true")
     a = ap.parse_args()
-    sys.exit(install() if a.install else uninstall() if a.uninstall else loop())
+    sys.exit(install_transcription() if a.install_transcription else install() if a.install else uninstall() if a.uninstall else loop(a.once))
