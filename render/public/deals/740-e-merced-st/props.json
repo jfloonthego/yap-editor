@@ -1,0 +1,14 @@
+{
+  "clip": "deals/740-e-merced-st/clip.mp4",
+  "headline": "740 E Merced St",
+  "location": "Avenal, CA",
+  "facts": "2 bed \u00b7 1 bath \u00b7 992 sqft",
+  "price": "$165,000",
+  "spread": "$80,000",
+  "rent": "$1,850/mo",
+  "offerBy": "Oct 26 at 12:12 PM PT",
+  "url": "deals.example.com/740-e-merced-st",
+  "clipDurationInSeconds": 7.0,
+  "introSeconds": 3.0,
+  "outroSeconds": 3.0
+}

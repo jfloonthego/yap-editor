@@ -132,6 +132,15 @@ python3 review/publish_social.py out/take-a-reel.mp4 --headline "the line on scr
 
 The video is uploaded straight to storage and added to the brand's library, and one draft per channel appears in Social Studio -> Review & approve. Nothing is posted until a person approves and schedules it there (the brand's banned-phrase and Fair Housing rules are checked on the caption). This replaces the S3/R2 phone review page for our use; `review/` is left in place.
 
+**Dispo deal walkthroughs.** `scripts/deal_video.py` cleans up a property walkthrough (trim, even out the sound, 1920x1080), adds the branded intro (address or area, facts, price, spread, rent) and outro (offer deadline and link), renders it with the `DealWalkthrough` composition, and attaches it to the deal on the dashboard:
+
+```bash
+python3 scripts/deal_video.py --list                                  # active deals and their ids
+python3 scripts/deal_video.py raw-walkthrough.mp4 --deal <deal-id> --trim 4.5-96 --normalize
+```
+
+Facts come from the deal (a hidden address is never put in the intro). Add `--no-publish` to only render, or pass `--headline/--price/--spread/--url` by hand. An AI-generated intro clip (for example from Higgsfield) can be dropped in as the footage's first seconds before running this.
+
 **Rendering tip.** If Remotion's own browser download stalls, render with the Chrome you already have: add `--browser-executable="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
 
 ## Optional extras

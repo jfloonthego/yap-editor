@@ -2,7 +2,8 @@ import React from "react";
 import {Composition} from "remotion";
 
 import {LandscapeOnBlack} from "./LandscapeOnBlack";
-import {LandscapeProps} from "./types";
+import {DealWalkthrough} from "./DealWalkthrough";
+import {DealProps, LandscapeProps} from "./types";
 
 const defaultProps: LandscapeProps = {
   clip: "reels/sample/clip.mp4",
@@ -17,6 +18,20 @@ const defaultProps: LandscapeProps = {
 
 export const Root: React.FC = () => {
   return (
+    <>
+    <Composition<any, DealProps>
+      id="DealWalkthrough"
+      component={DealWalkthrough}
+      width={1920}
+      height={1080}
+      fps={30}
+      durationInFrames={30 * 12}
+      defaultProps={{clip: "deals/sample/clip.mp4", headline: "123 Main St", location: "Fresno, CA", facts: "3 bed · 2 bath · 1,450 sqft", price: "$185,000", spread: "$65,000", rent: "$2,100", offerBy: "Oct 30 at 5:00 PM PT", url: "jesemmhomeventures.com/deals", clipDurationInSeconds: 8}}
+      calculateMetadata={({props}) => {
+        const fps = props.fps ?? 30;
+        return {fps, durationInFrames: Math.max(1, Math.round(((props.introSeconds ?? 4) + props.clipDurationInSeconds + (props.outroSeconds ?? 5)) * fps))};
+      }}
+    />
     <Composition<any, LandscapeProps>
       id="LandscapeOnBlack"
       component={LandscapeOnBlack}
@@ -34,5 +49,6 @@ export const Root: React.FC = () => {
         };
       }}
     />
+    </>
   );
 };
