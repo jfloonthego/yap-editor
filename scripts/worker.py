@@ -136,7 +136,10 @@ def transcribe_take(jid: str, tid: str, video: Path, work: Path) -> list:
     except Exception as first:  # noqa: BLE001
         say(jid, "Online transcription unavailable, trying the Whisper installed on this computer")
         out = work / f"take-{tid}.local.json"
-        r = subprocess.run([venv_python(), "pipeline/transcribe.py", str(video), "-o", str(out)], cwd=ROOT, capture_output=True, text=True)
+        py = venv_python()
+        has_mlx = subprocess.run([py, "-c", "import mlx_whisper"], capture_output=True).returncode == 0
+        model_args = ["--backend", "mlx", "--model", "mlx-community/whisper-small-mlx"] if has_mlx else ["--backend", "faster", "--model", "small"]
+        r = subprocess.run([py, "pipeline/transcribe.py", str(video), "-o", str(out), *model_args], cwd=ROOT, capture_output=True, text=True)
         if r.returncode == 0 and out.exists():
             return json.loads(out.read_text())["words"]
         raise RuntimeError(f"{first} Local transcription isn't installed either. Fix: add credits to the OpenAI account (a few minutes of speech costs a cent or two), or run: python3 scripts/worker.py --install-transcription")
@@ -296,7 +299,7 @@ def install() -> int:
     if any(str(ROOT).startswith(str(Path.home() / d)) for d in ("Documents", "Desktop", "Downloads")):
         run_root = Path.home() / "yap-worker"
         print(f"Copying the editor to {run_root} (macOS keeps background programs out of Documents)…")
-        subprocess.run(["rsync", "-a", "--delete", "--exclude", ".git", "--exclude", "work", "--exclude", "out", "--exclude", ".npm-cache", f"{ROOT}/", f"{run_root}/"], check=True)
+        subprocess.run(["rsync", "-a", "--delete", "--exclude", ".git", "--exclude", ".venv", "--exclude", "work", "--exclude", "out", "--exclude", ".npm-cache", f"{ROOT}/", f"{run_root}/"], check=True)
     log_file = Path.home() / "Library/Logs/yap-worker.log"
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -322,7 +325,9 @@ def install() -> int:
 
 def install_transcription() -> int:
     """Optional: Whisper on this computer, used when online transcription is unavailable (no OpenAI credits)."""
-    venv = ROOT / ".venv"
+    # The login item runs from ~/yap-worker (see install), so the Whisper environment has to live there.
+    home_copy = Path.home() / "yap-worker"
+    venv = (home_copy if home_copy.exists() and ROOT != home_copy else ROOT) / ".venv"
     if not venv.exists():
         subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
     pip = str(venv / "bin/pip")
